@@ -105,7 +105,8 @@ class first_screen extends StatelessWidget {
                 },
                 child: const Text(
                   'Play With Friend',
-                  style: TextStyle(fontSize: 24),
+                  style: TextStyle(fontSize: 24,color:Colors.white),
+
                 ),
               ),
               const SizedBox(width: 50, height: 15),
@@ -127,7 +128,7 @@ class first_screen extends StatelessWidget {
                 },
                 child: const Text(
                   'Play With Computer',
-                  style: TextStyle(fontSize: 24),
+                  style: TextStyle(fontSize: 24,color:Colors.white),
                 ),
               )
             ],

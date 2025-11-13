@@ -1,49 +1,211 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:tic_tac_toe/draw.dart';
 import 'package:tic_tac_toe/winner.dart';
 
-class vs_computer extends StatefulWidget {
+class VsComputer extends StatefulWidget {
   final String player;
 
-  vs_computer({Key? key, required this.player}) : super(key: key);
+  const VsComputer({Key? key, required this.player}) : super(key: key);
 
   @override
-  State<vs_computer> createState() => _vs_computerState();
+  State<VsComputer> createState() => _VsComputerState();
 }
 
-bool win = false;
-List<String> chars = List.filled(9, ' ');
-List<Color> colors_ = List.filled(9, Colors.blue);
-List<bool> visited = List.filled(9, false);
-late String player;
-int cnt = 0;
+class _VsComputerState extends State<VsComputer> {
+  static const int gridSize = 9;
+  late List<String> board;
+  late List<Color> tileColors;
+  late List<bool> visited;
+  bool gameWon = false;
+  int moveCount = 0;
 
-class _vs_computerState extends State<vs_computer> {
+  @override
+  void initState() {
+    super.initState();
+    _resetGame();
+  }
+
+  void _resetGame() {
+    board = List.filled(gridSize, ' ');
+    tileColors = List.filled(gridSize, Colors.blue);
+    visited = List.filled(gridSize, false);
+    gameWon = false;
+    moveCount = 0;
+  }
+
+  void _handleTap(int index) async {
+    if (visited[index] || gameWon) return;
+
+    _markMove(index, 'O', Colors.pinkAccent);
+
+    if (_checkWinner()) return;
+    if (moveCount == gridSize) {
+      _showDrawScreen();
+      return;
+    }
+
+    await _computerMove();
+
+    if (_checkWinner()) return;
+    if (moveCount == gridSize) {
+      _showDrawScreen();
+    }
+  }
+
+  void _markMove(int index, String player, Color color) {
+    setState(() {
+      board[index] = player;
+      tileColors[index] = color;
+      visited[index] = true;
+      moveCount++;
+    });
+  }
+
+  bool _checkWinner() {
+    String? winner = _getWinner();
+    if (winner != null) {
+      setState(() {
+        gameWon = true;
+      });
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => WinnerScreen(winner: winner)),
+      );
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _computerMove() async {
+    int bestScore = -1000;
+    int bestMove = -1;
+
+    for (int i = 0; i < gridSize; i++) {
+      if (!visited[i]) {
+        board[i] = 'X';
+        visited[i] = true;
+        int score = _minimax(0, false);
+        board[i] = ' ';
+        visited[i] = false;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = i;
+        }
+      }
+    }
+
+    if (bestMove != -1) {
+      _markMove(bestMove, 'X', Colors.cyanAccent);
+    }
+  }
+
+  int _minimax(int depth, bool isMaximizing) {
+    String? result = _getWinner();
+    if (result != null) {
+      if (result == 'X') return 10 - depth;
+      if (result == 'O') return depth - 10;
+      return 0; // Draw
+    }
+
+    if (isMaximizing) {
+      int bestScore = -1000;
+      for (int i = 0; i < gridSize; i++) {
+        if (!visited[i]) {
+          board[i] = 'X';
+          visited[i] = true;
+          int score = _minimax(depth + 1, false);
+          board[i] = ' ';
+          visited[i] = false;
+          bestScore = max(score, bestScore);
+        }
+      }
+      return bestScore;
+    } else {
+      int bestScore = 1000;
+      for (int i = 0; i < gridSize; i++) {
+        if (!visited[i]) {
+          board[i] = 'O';
+          visited[i] = true;
+          int score = _minimax(depth + 1, true);
+          board[i] = ' ';
+          visited[i] = false;
+          bestScore = min(score, bestScore);
+        }
+      }
+      return bestScore;
+    }
+  }
+
+  String? _getWinner() {
+    const List<List<int>> winningPositions = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6],
+    ];
+
+    for (var positions in winningPositions) {
+      if (board[positions[0]] != ' ' &&
+          board[positions[0]] == board[positions[1]] &&
+          board[positions[1]] == board[positions[2]]) {
+        setState(() {
+          for (var pos in positions) {
+            tileColors[pos] = Colors.deepPurple;
+          }
+        });
+        return board[positions[0]];
+      }
+    }
+    return null;
+  }
+
+  void _showDrawScreen() {
+    setState(() {
+      gameWon = true;
+    });
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const DrawScreen()),
+    );
+  }
+
+  Widget _buildGridButton(int index) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: tileColors[index],
+        minimumSize: const Size(75, 75),
+      ),
+      onPressed: () => _handleTap(index),
+      child: Text(
+        board[index],
+        style: const TextStyle(fontSize: 50),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    print("Reb[ilded");
-    player = widget.player;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         appBar: AppBar(
-          title: Text('tic tac toe'),
+          title: const Text('Tic Tac Toe'),
         ),
         body: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [
                 Color.fromARGB(162, 3, 113, 82),
                 Color.fromARGB(161, 86, 191, 236),
                 Color.fromARGB(255, 107, 43, 186),
               ],
-              stops: [
-                0.3,
-                0.4,
-                0.8,
-              ],
+              stops: [0.3, 0.4, 0.8],
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
             ),
@@ -51,335 +213,63 @@ class _vs_computerState extends State<vs_computer> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    widget.player,
-                    style: TextStyle(
-                      fontSize: 30,
-                      color: Colors.indigo,
-                    ),
-                  ),
-                  Text(
-                    '  VS  ',
-                    style: TextStyle(
-                      fontSize: 30,
-                      color: Colors.indigo,
-                    ),
-                  ),
-                  Text(
-                    'Computer',
-                    style: TextStyle(
-                      fontSize: 30,
-                      color: Colors.indigo,
-                    ),
-                  )
-                ],
-              ),
-              SizedBox(
-                height: 50,
-                width: 50,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                      style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all(colors_[0]),
-                        minimumSize: MaterialStateProperty.all(Size(75, 75)),
-                      ),
-                      onPressed: () {
-                        chk(context, 0);
-                        setState(() {});
-                      },
-                      child: Text(
-                        chars[0],
-                        style: TextStyle(fontSize: 50),
-                      )),
-                  SizedBox(
-                    width: 20,
-                  ),
-                  ElevatedButton(
-                      style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all(colors_[1]),
-                        minimumSize: MaterialStateProperty.all(Size(75, 75)),
-                      ),
-                      onPressed: () {
-                        chk(context, 1);
-                        setState(() {});
-                      },
-                      child: Text(
-                        chars[1],
-                        style: TextStyle(fontSize: 50),
-                      )),
-                  SizedBox(
-                    width: 20,
-                  ),
-                  ElevatedButton(
-                      style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all(colors_[2]),
-                        minimumSize: MaterialStateProperty.all(Size(75, 75)),
-                      ),
-                      onPressed: () {
-                        chk(context, 2);
-                        setState(() {});
-                      },
-                      child: Text(
-                        chars[2],
-                        style: TextStyle(fontSize: 50),
-                      )),
-                ],
-              ),
-              SizedBox(
-                height: 20,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                      style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all(colors_[3]),
-                        minimumSize: MaterialStateProperty.all(Size(75, 75)),
-                      ),
-                      onPressed: () {
-                        chk(context, 3);
-                        setState(() {});
-                      },
-                      child: Text(
-                        chars[3],
-                        style: TextStyle(fontSize: 50),
-                      )),
-                  SizedBox(
-                    width: 20,
-                  ),
-                  ElevatedButton(
-                      style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all(colors_[4]),
-                        minimumSize: MaterialStateProperty.all(Size(75, 75)),
-                      ),
-                      onPressed: () {
-                        chk(context, 4);
-                        setState(() {});
-                      },
-                      child: Text(
-                        chars[4],
-                        style: TextStyle(fontSize: 50),
-                      )),
-                  SizedBox(
-                    width: 20,
-                  ),
-                  ElevatedButton(
-                      style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all(colors_[5]),
-                        minimumSize: MaterialStateProperty.all(Size(75, 75)),
-                      ),
-                      onPressed: () {
-                        chk(context, 5);
-                        setState(() {});
-                      },
-                      child: Text(
-                        chars[5],
-                        style: TextStyle(fontSize: 50),
-                      )),
-                ],
-              ),
-              SizedBox(
-                height: 20,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                      style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all(colors_[6]),
-                        minimumSize: MaterialStateProperty.all(Size(75, 75)),
-                      ),
-                      onPressed: () {
-                        chk(context, 6);
-                        setState(() {});
-                      },
-                      child: Text(
-                        chars[6],
-                        style: TextStyle(fontSize: 50),
-                      )),
-                  SizedBox(
-                    width: 20,
-                  ),
-                  ElevatedButton(
-                      style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all(colors_[7]),
-                        minimumSize: MaterialStateProperty.all(Size(75, 75)),
-                      ),
-                      onPressed: () {
-                        chk(context, 7);
-                        setState(() {});
-                      },
-                      child: Text(
-                        chars[7],
-                        style: TextStyle(fontSize: 50),
-                      )),
-                  SizedBox(
-                    width: 20,
-                  ),
-                  ElevatedButton(
-                      style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all(colors_[8]),
-                        minimumSize: MaterialStateProperty.all(Size(75, 75)),
-                      ),
-                      onPressed: () {
-                        chk(context, 8);
-                        setState(() {});
-                      },
-                      child: Text(
-                        chars[8],
-                        style: TextStyle(fontSize: 50),
-                      )),
-                ],
-              ),
-              SizedBox(
-                height: 100,
-              ),
-              ElevatedButton(
-                  onPressed: () {
-                    cnt = 0;
-                    chars = List.filled(9, ' ');
-                    colors_ = List.filled(9, Colors.blue);
-                    visited = List.filled(9, false);
-                    win = false;
-                    setState(() {});
-                  },
-                  child: Text(
-                    'reset',
-                    style: TextStyle(fontSize: 40),
-                  ))
+              _buildTitle(),
+              const SizedBox(height: 50),
+              _buildBoard(),
+              const SizedBox(height: 100),
+              _buildResetButton(),
             ],
           ),
         ),
       ),
     );
   }
-}
 
-Future<void> chk(BuildContext context, int idx) async {
-  if (visited[idx]||win) {
-    return;
-  }
-  visited[idx] = true;
-  if (cnt & 1 == 1) {
-    chars[idx] = 'X';
-    colors_[idx] = Colors.cyanAccent;
-  } else {
-    chars[idx] = 'O';
-    colors_[idx] = Colors.pinkAccent;
-  }
-  cnt++;
-  who_win(context);
-  if (win) {
-    return;
-  }
-  if (cnt == 9) {
-    win = true;
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const DrawScreen()),
+  Widget _buildTitle() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          widget.player,
+          style: const TextStyle(fontSize: 30, color: Colors.indigo),
+        ),
+        const Text(
+          '  VS  ',
+          style: TextStyle(fontSize: 30, color: Colors.indigo),
+        ),
+        const Text(
+          'Computer',
+          style: TextStyle(fontSize: 30, color: Colors.indigo),
+        ),
+      ],
     );
   }
-  if (win) {
-    return;
-  }
-  await computer(context);
-  cnt++;
-  who_win(context);
-  if (win) {
-    return;
-  }
-  if (cnt == 9) {
-    win = true;
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const DrawScreen()),
+
+  Widget _buildBoard() {
+    return Column(
+      children: List.generate(3, (row) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(3, (col) {
+            int index = row * 3 + col;
+            return Padding(
+              padding: const EdgeInsets.all(10),
+              child: _buildGridButton(index),
+            );
+          }),
+        );
+      }),
     );
   }
-}
 
-Future<void> computer(BuildContext context) async {
-  List<int> freeIndices = [];
-  for (int i = 0; i < 9; i++) {
-    if (!visited[i]) {
-      freeIndices.add(i);
-    }
-  }
-  if (freeIndices.isEmpty) {
-    return;
-  }
-  Random random = Random();
-  int idx = freeIndices[random.nextInt(freeIndices.length)];
-  chars[idx] = 'X';
-  colors_[idx] = Colors.cyanAccent;
-  visited[idx] = true;
-}
-
-void who_win(BuildContext context) {
-  String winner = ' ';
-  for (int i = 0; i < 9; i += 3) {
-    if (chars[i] != ' ' &&
-        chars[i] == chars[i + 1] &&
-        chars[i] == chars[i + 2]) {
-      colors_[i] = Colors.deepPurple;
-      colors_[i + 1] = Colors.deepPurple;
-      colors_[i + 2] = Colors.deepPurple;
-      if (chars[i] == 'X')
-        winner = 'X';
-      else
-        winner = 'O';
-      break;
-    }
-  }
-
-  for (int i = 0; i < 3; i++) {
-    if (chars[i] != ' ' &&
-        chars[i] == chars[i + 3] &&
-        chars[i] == chars[i + 6]) {
-      colors_[i] = Colors.deepPurple;
-      colors_[i + 3] = Colors.deepPurple;
-      colors_[i + 6] = Colors.deepPurple;
-      if (chars[i] == 'X')
-        winner = 'X';
-      else
-        winner = 'O';
-      break;
-    }
-  }
-
-  if (chars[0] != ' ' && chars[0] == chars[4] && chars[0] == chars[8]) {
-    colors_[0] = Colors.deepPurple;
-    colors_[4] = Colors.deepPurple;
-    colors_[8] = Colors.deepPurple;
-    if (chars[0] == 'X')
-      winner = 'X';
-    else
-      winner = 'O';
-  }
-
-  if (chars[2] != ' ' && chars[2] == chars[4] && chars[2] == chars[6]) {
-    colors_[2] = Colors.deepPurple;
-    colors_[4] = Colors.deepPurple;
-    colors_[6] = Colors.deepPurple;
-    if (chars[2] == 'X')
-      winner = 'X';
-    else
-      winner = 'O';
-  }
-  if (winner == 'X')
-    winner = 'Computer';
-  else if (winner == 'O') winner = player;
-  if (winner != ' ') {
-    win = true;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => WinnerScreen(winner: winner),
+  Widget _buildResetButton() {
+    return ElevatedButton(
+      onPressed: () {
+        setState(_resetGame);
+      },
+      child: const Text(
+        'Reset',
+        style: TextStyle(fontSize: 40),
       ),
     );
   }

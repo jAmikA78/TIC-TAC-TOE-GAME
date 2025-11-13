@@ -19,7 +19,7 @@ class _single_screenState extends State<single_screen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => vs_computer(player: firstPlayerName),
+        builder: (context) => VsComputer(player: firstPlayerName),
       ),
     );
   }
